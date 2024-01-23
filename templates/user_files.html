@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>User Files</title>
+    <style>
+        .highlight {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>User Files</h1>
+
+
+    <!-- Display the list of uploaded files -->
+    <p>Last Download Time: {{ last_download_time }}</p>
+
+    <!-- Display the list of uploaded files -->
+    <ul>
+        {% for file, upload_time in user_files_info %}
+        {% set upload_datetime = to_datetime(upload_time) %}
+        <li {% if last_download_time and upload_datetime > last_download_time %}class="highlight"{% endif %}>
+                {{ file }} Uploaded on: {{ upload_datetime }}
+                
+                <!-- Download link -->
+                <a href="{{ url_for('download_file', filename=file) }}" download>Download</a>
+                
+                <!-- Delete form -->
+                <form method="post" action="{{ url_for('delete_file', filename=file) }}">
+                    <input type="submit" value="Delete">
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+        
+        <!-- Add a "Download All" button -->
+        <button type="button" onclick="downloadAll()">Download All</button>
+
+    <!-- Display success message and file information -->
+    <div id="success-message"></div>
+    <div id="file-info"></div>
+
+    <script>
+        // Retrieve data from the URL query parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const successMessage = urlParams.get('successMessage');
+        const fileName = urlParams.get('fileName');
+        const sequenceNumber = urlParams.get('sequenceNumber');
+        const uploadTime = urlParams.get('uploadTime');
+        const lastDownloadTime = urlParams.get('lastDownloadTime');
+
+        // Display success message
+        const successMessageElement = document.getElementById('success-message');
+        if (successMessage) {
+            successMessageElement.innerText = successMessage;
+        }
+
+        // Display file information
+        const fileInfoElement = document.getElementById('file-info');
+        if (fileName && sequenceNumber) {
+            fileInfoElement.innerText = `File uploaded: ${fileName}\nSequence number: ${sequenceNumber}\nUploaded on: ${uploadTime}`;
+        }
+
+        // Display last download time
+        const lastDownloadTimeElement = document.getElementById('last-download-time');
+        if (lastDownloadTime) {
+            lastDownloadTimeElement.innerText = `Last Download Time: ${lastDownloadTime}`;
+        }
+
+        function downloadAll() {
+            // Ask the user if they want to download all files
+            if (confirm('Do you want to download all files?')) {
+                // Trigger the download of all files
+                fetch('/download-all')
+                    .then(response => response.blob())
+                    .then(blob => {
+                        var link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = 'all_files.zip';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    })
+                    .catch(error => {
+                        console.error('Failed to download files:', error);
+                    });
+            }
+        }
+        function updateLastDownloadTime() {
+            // Get the current date and time
+            var currentDate = new Date();
+            var lastDownloadTime = currentDate.toISOString();
+
+            // Store the last download time in localStorage
+            localStorage.setItem('lastDownloadTime', lastDownloadTime);
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Email Sender</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Style to make the textarea larger */
+        #sequence {
+            width: 500px; /* Set the width as desired */
+            height: 200px; /* Set the height as desired */
+        }
+
+        /* Hide the recipient email input and the "Send Email" button by default */
+        #email-container,
+        #send-email-button {
+            display: none;
+        }
+    </style>
+    <script>
+        var ngrok_url = 'https://b330-66-96-214-220.ngrok-free.app';
+
+        function displayMessage(message) {
+            var messageElement = document.getElementById('message');
+            messageElement.innerText = message;
+            messageElement.style.display = 'block';
+        }
+
+        function toggleRecipientEmail() {
+            var emailContainer = document.getElementById('email-container');
+            var sendEmailButton = document.getElementById('send-email-button');
+            var sendEmailCheckbox = document.getElementById('sendEmail');
+
+            if (sendEmailCheckbox.checked) {
+                emailContainer.style.display = 'block';
+                sendEmailButton.style.display = 'block';
+            } else {
+                emailContainer.style.display = 'none';
+                sendEmailButton.style.display = 'none';
+            }
+        }
+
+        function toggleImagePopup() {
+            var viewImageNowCheckbox = document.getElementById('viewImageNow');
+            var sequenceInput = document.getElementById('sequence');
+            var sequence = sequenceInput.value;
+            var imageContainer = document.getElementById('image-container');
+            var imageLink = document.getElementById('image-link');
+            var popupImage = document.getElementById('popup-image');
+
+            if (viewImageNowCheckbox.checked) {
+                // If sequence is empty, try to extract from the file
+                if (!sequence.trim() && document.getElementById('file').files.length > 0) {
+                    var file = document.getElementById('file').files[0];
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        var content = e.target.result;
+                        // Add logic here to extract sequence from content
+                        // Assuming you have a function extractSequenceFromContent
+                        var extractedSequence = extractSequenceFromContent(content);
+                        if (extractedSequence) {
+                            sequenceInput.value = extractedSequence;
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+
+                // Construct the URL to the image based on the sequence number
+                var imageURL = '/static/' + sequence + '.png';
+                imageLink.href = imageURL; // Set the link's href attribute to the image URL
+                imageLink.style.display = 'block'; // Display the link
+                popupImage.src = imageURL; // Set the image source
+                imageContainer.style.display = 'block'; // Display the image and link container
+            } else {
+                imageLink.style.display = 'none'; // Hide the link
+                imageContainer.style.display = 'none'; // Hide the image and link container
+            }
+        }
+
+        function sendToUser() {
+            var fileInput = document.getElementById('file');
+            var formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+        
+            // Send the PDB file to the server
+            fetch('/receive-file', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Server Response:', data);
+        
+                if (data.message) {
+                    // Display success message or perform any other actions
+                    displayMessage('File sent successfully.');
+                } else {
+                    console.error('Error:', data.error);
+                    displayMessage('Failed to send file. Please try again.');
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                displayMessage('Failed to send file. Please try again.');
+            });
+        }
+        
+        
+        function sendEmail() {
+            // Retrieve the sequence number and email from the form
+            var sequence = document.getElementById('sequence').value;
+            var email = document.getElementById('email').value;
+    
+            // Trigger the email sending process by making a POST request to /send-email
+            fetch('/send-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sequence: sequence,
+                    email: email,
+                }),
+            })
+            .then(response => response.text())
+            .then(data => {
+                console.log('Server Response:', data);
+                alert(data); // Display the server response in an alert (you can handle it differently)
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                alert('Failed to send email. Please try again.');
+            });
+        }
+        
+        function displayFileInformation(fileName, sequenceNumber) {
+            var fileContainer = document.getElementById('file-container');
+            fileContainer.innerHTML = `File uploaded: ${fileName}<br>`;
+    
+            // Create a download link for the file
+            var downloadLink = document.createElement('a');
+            downloadLink.href = `/uploaded_files/${fileName}`;
+            downloadLink.download = fileName;
+            downloadLink.innerText = 'Download File';
+            fileContainer.appendChild(downloadLink);
+        }
+    
+        function displayHTMLContent(content) {
+            var htmlContainer = document.getElementById('htmlContent');
+            htmlContainer.innerHTML = content;
+        }
+    </script>
+    
+    <!-- Modify the body section as follows -->
+    <body>
+        <h1>Sequence</h1>
+        <form action="/send-email" method="post" onsubmit="displayMessage('Sending...')" enctype="multipart/form-data">
+            <!-- Add an input for file upload -->
+            <label for="file">Upload File (PDB EXTENSION ONLY):</label>
+            <input type="file" id="file" name="file" accept=".pdb">
+            <button type="button" onclick="sendToUser()">Send to User</button>
+            <br><br>
+    
+            <label for="sequence">Sequence Number:</label>
+            <br>
+            <textarea id="sequence" name="sequence"></textarea><br><br>
+            <!-- Add a checkbox for "View Image Now" -->
+            <label for="viewImageNow">View Image Now:</label>
+            <input type="checkbox" id="viewImageNow" name="viewImageNow" onclick="toggleImagePopup()">
+            <br>
+            <div id="image-container" style="display: none;">
+                <a id="image-link" href="#" target="_blank">View Image</a>
+                <img id="popup-image" src="" alt="Sequence Image" style="width: 800px; height: auto;">
+            </div>
+            <br>
+            <label for="sendEmail">Send Email:</label>
+            <input type="checkbox" id="sendEmail" name="sendEmail" onclick="toggleRecipientEmail()">
+            <br>
+            <!-- Recipient email input container -->
+            <div id="email-container">
+                <label for="email">Recipient Email:</label>
+                <input type="email" id="email" name="email"><br><br>
+            </div>
+    
+            <!-- "Send Email" button -->
+            <input type="submit" id="send-email-button" value="Send Email" style="display: none;">
+        </form>
+    
+        <!-- Display sent message here -->
+        <div id="message" style="display: none;"></div>
+    
+        <!-- Container to display file information -->
+        <div id="file-container"></div>
+    
+        <!-- Container to display HTML content -->
+        <div id="htmlContent"></div>
+
+    </body>
+</html>
