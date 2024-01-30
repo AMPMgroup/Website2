@@ -2,9 +2,11 @@
 Sequence Input Server
 
 # Requirements :
+```bash
 Install MySQL installer latest version
 Install python 3.11.5
 Install ngrok 
+```
 ### Windows 
 Set up the flask environment
 ```bash
@@ -44,12 +46,14 @@ flask run
     'database': 'mydb'
 }
 ### other files related to database: 
-`mydb-website2db.mwb` 
+Files found in syno:
+`mydb-website2db.mwb` , `mydb_files.sql`
 ## Ngrok 
 ```bash
 Account details:
 email: testdivya368@gmail.com
-password : 
+password :
+**password found in syno ReadMe file
 ```
 #### Usage :
 Using visual studio code or any other compatible software
