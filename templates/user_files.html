@@ -18,7 +18,7 @@
     <form method="post" action="{{ url_for('download_selected_files') }}">
         <ul>
             {% for file, upload_time, downloaded_time in user_files_info %}
-                <li>
+                <li {% if not downloaded_time %}class="highlight"{% endif %}>
                     <input type="checkbox" name="selected_files[]" value="{{ file }}">
                     {{ file }} 
                     Uploaded on: {{ to_datetime(upload_time) }} 
