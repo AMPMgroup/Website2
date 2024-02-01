@@ -54,10 +54,10 @@ def receive_file():
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
 
-            # Convert the current timestamp to a string
+            # Convert timestamp to a string
             upload_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # Insert file info into the database
+            # Inserting file info into the database
             mydb = connect_to_database()
             mycursor = mydb.cursor()
             sql = "INSERT INTO files (filename, upload_time) VALUES (%s, %s)"
@@ -146,7 +146,9 @@ def send_email():
                 filename = secure_filename(file.filename)
                 file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 file.save(file_path)
+# email_sender to be changed later,  currently using gmail account for testing purposes
 # ampm.group2021@gmail.com
+# gmail password is 2 step verification password NOT gmail password, to find: Enter manage your accounts ; security ; 2-step verfication; App passwords
                 
         email_sender = 'testdivya368@gmail.com'
         email_password = 'brcq gkuv uwri dcwk'
@@ -297,16 +299,13 @@ def delete_file(filename):
             return {"error": "File not found."}
     except Exception as e:
         return {"error": f"Failed to delete file. Error: {e}"}
-#@app.before_request
-#def before_request():
-    #if 'ngrok_url' not in session:
-        # Update ngrok_url to use the provided subdomain
-        #session['ngrok_url'] = 'https://a5b4-66-96-214-220.ngrok-free.app'
+
 @app.route('/')
 def index():
     ngrok_url = 'https://4f42-2404-e801-2001-3e3f-f006-cc10-1bba-391e.ngrok-free.app'
     session['ngrok_url'] = ngrok_url
     session['authenticated'] = False  
     return render_template('index.html', sequence="", ngrok_url=ngrok_url)
+
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True)
