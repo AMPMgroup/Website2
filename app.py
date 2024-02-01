@@ -190,7 +190,7 @@ def user_files():
             upload_times = []
         else:
             # Sort files_info based on upload_time
-            files_info.sort(key=lambda x: x[1], reverse=True)
+            files_info.sort(key=lambda x: (not x[2], x[1]), reverse=True)
             # Separate filenames, upload times, and downloaded times into three lists
             user_files, upload_times, downloaded_times = zip(*files_info)
         # Create URLs for ngrok and Flask
