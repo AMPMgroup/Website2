@@ -1,6 +1,6 @@
+
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>User Files</title>
     <style>
@@ -10,94 +10,251 @@
         }
     </style>
 </head>
-
 <body>
     <h1>User Files</h1>
-
-
     <!-- Display the list of uploaded files -->
     <p>Last Download Time: {{ last_download_time }}</p>
-
     <!-- Display the list of uploaded files -->
-    <ul>
-        {% for file, upload_time in user_files_info %}
-        {% set upload_datetime = to_datetime(upload_time) %}
-        <li {% if last_download_time and upload_datetime > last_download_time %}class="highlight"{% endif %}>
-                {{ file }} Uploaded on: {{ upload_datetime }}
-                
-                <!-- Download link -->
-                <a href="{{ url_for('download_file', filename=file) }}" download>Download</a>
-                
-                <!-- Delete form -->
-                <form method="post" action="{{ url_for('delete_file', filename=file) }}">
-                    <input type="submit" value="Delete">
-                </form>
-            </li>
-        {% endfor %}
-    </ul>
-        
-        <!-- Add a "Download All" button -->
-        <button type="button" onclick="downloadAll()">Download All</button>
-
+    <form method="post" action="{{ url_for('download_selected_files') }}">
+        <ul>
+            {% for file, upload_time, downloaded_time in user_files_info %}
+                <li>
+                    <input type="checkbox" name="selected_files[]" value="{{ file }}">
+                    {{ file }} 
+                    Uploaded on: {{ to_datetime(upload_time) }} 
+                    {% if downloaded_time %}
+                        | Downloaded on: {{ to_datetime(downloaded_time) }}
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+        <!-- Add a "Download Selected" button -->
+        <input type="submit" value="Download Selected">
+        <!-- Add a "Delete Selected" button -->
+        <button type="button" onclick="deleteSelected()">Delete Selected</button>
+    
     <!-- Display success message and file information -->
     <div id="success-message"></div>
     <div id="file-info"></div>
-
     <script>
+        let isDragging = false;
+        let startSelection;
+        let endSelection;
+        let selectionRect;
+    
+        document.addEventListener('mousedown', (event) => {
+            // Disable browser text selection
+            event.preventDefault();
+    
+            // Enable drag mode
+            isDragging = true;
+    
+            // Store the starting point of the selection
+            startSelection = {
+                x: event.clientX,
+                y: event.clientY
+            };
+    
+            // Create a selection rectangle
+            selectionRect = document.createElement('div');
+            selectionRect.style.position = 'fixed';
+            selectionRect.style.border = '2px dashed #000';
+            selectionRect.style.background = 'rgba(0, 0, 0, 0.2)';
+            selectionRect.style.pointerEvents = 'none';
+            document.body.appendChild(selectionRect);
+        });
+    
+        document.addEventListener('mousemove', (event) => {
+            if (isDragging) {
+                // Update the ending point of the selection
+                endSelection = {
+                    x: event.clientX,
+                    y: event.clientY
+                };
+    
+                // Highlight the selected area
+                highlightSelectedArea();
+            }
+        });
+    
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                // Disable drag mode
+                isDragging = false;
+    
+                // Clear the selection
+                clearSelection();
+            }
+        });
+    
+        function highlightSelectedArea() {
+            // Calculate the dimensions of the selection rectangle
+            const width = Math.abs(endSelection.x - startSelection.x);
+            const height = Math.abs(endSelection.y - startSelection.y);
+            const left = Math.min(startSelection.x, endSelection.x);
+            const top = Math.min(startSelection.y, endSelection.y);
+    
+            // Apply styles to the selection rectangle
+            selectionRect.style.width = `${width}px`;
+            selectionRect.style.height = `${height}px`;
+            selectionRect.style.left = `${left}px`;
+            selectionRect.style.top = `${top}px`;
+    
+            // Select checkboxes within the selection area
+            selectCheckboxesInArea(left, top, width, height);
+        }
+    
+        function selectCheckboxesInArea(left, top, width, height) {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach((checkbox) => {
+                const checkboxRect = checkbox.getBoundingClientRect();
+    
+                if (
+                    checkboxRect.left < left + width &&
+                    checkboxRect.right > left &&
+                    checkboxRect.top < top + height &&
+                    checkboxRect.bottom > top
+                ) {
+                    checkbox.checked = true;
+                }
+            });
+        }
+    
+        function clearSelection() {
+            // Remove the selection rectangle
+            if (selectionRect) {
+                selectionRect.remove();
+            }
+        }
         // Retrieve data from the URL query parameters
         const urlParams = new URLSearchParams(window.location.search);
         const successMessage = urlParams.get('successMessage');
         const fileName = urlParams.get('fileName');
         const sequenceNumber = urlParams.get('sequenceNumber');
         const uploadTime = urlParams.get('uploadTime');
-        const lastDownloadTime = urlParams.get('lastDownloadTime');
-
+        // Retrieve lastDownloadedFiles from localStorage
+        const lastDownloadedFiles = localStorage.getItem('lastDownloadedFiles') ? JSON.parse(localStorage.getItem('lastDownloadedFiles')) : [];
+        // Display last download time if available
+        const lastDownloadTimeElement = document.getElementById('last-download-time');
+        if (lastDownloadTimeElement) {
+            const lastDownloadTime = lastDownloadedFiles.length > 0 ? new Date(Math.max(...lastDownloadedFiles.map(date => new Date(date)))) : null;
+            if (lastDownloadTime) {
+                lastDownloadTimeElement.innerText = `Last Download Time: ${lastDownloadTime}`;
+            } else {
+                lastDownloadTimeElement.innerText = "Last Download Time: Not Available";
+            }
+        }
+        
         // Display success message
         const successMessageElement = document.getElementById('success-message');
-        if (successMessage) {
+        if (successMessageElement && successMessage) {
             successMessageElement.innerText = successMessage;
         }
-
         // Display file information
         const fileInfoElement = document.getElementById('file-info');
-        if (fileName && sequenceNumber) {
+        if (fileInfoElement && fileName && sequenceNumber) {
             fileInfoElement.innerText = `File uploaded: ${fileName}\nSequence number: ${sequenceNumber}\nUploaded on: ${uploadTime}`;
         }
-
-        // Display last download time
-        const lastDownloadTimeElement = document.getElementById('last-download-time');
-        if (lastDownloadTime) {
-            lastDownloadTimeElement.innerText = `Last Download Time: ${lastDownloadTime}`;
+        // Function to retrieve the last download time from localStorage
+        function getLastDownloadTime() {
+            return localStorage.getItem('lastDownloadTime');
         }
-
-        function downloadAll() {
-            // Ask the user if they want to download all files
-            if (confirm('Do you want to download all files?')) {
-                // Trigger the download of all files
-                fetch('/download-all')
-                    .then(response => response.blob())
-                    .then(blob => {
-                        var link = document.createElement('a');
-                        link.href = URL.createObjectURL(blob);
-                        link.download = 'all_files.zip';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    })
-                    .catch(error => {
-                        console.error('Failed to download files:', error);
-                    });
+        
+        // Function to store selected files in localStorage
+        function storeSelectedFiles() {
+            const selectedFiles = Array.from(document.querySelectorAll('input[name="selected_files[]"]:checked')).map(input => input.value);
+            console.log('Storing selected files:', selectedFiles);
+            localStorage.setItem('selectedFiles', JSON.stringify(selectedFiles));
+        }
+        // Function to retrieve selected files from localStorage and set the checkboxes
+        function retrieveSelectedFiles() {
+            const storedSelectedFiles = localStorage.getItem('selectedFiles');
+            console.log('Retrieving selected files:', storedSelectedFiles);
+            if (storedSelectedFiles) {
+                const selectedFiles = JSON.parse(storedSelectedFiles);
+                selectedFiles.forEach(file => {
+                    const checkbox = document.querySelector(`input[name="selected_files[]"][value="${file}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
+            }
+        }
+        // Function to be called on page load or after file download
+        function onPageLoadOrDownload() {
+            retrieveSelectedFiles();
+           // storeSelectedFiles();
+            updateLastDownloadTime();  // Update last download time after every download
+        }
+        // Call onPageLoadOrDownload when the DOM content is loaded
+        //document.addEventListener('DOMContentLoaded', onPageLoadOrDownload);
+        // Function to clear selected files from localStorage after successful download
+        function clearSelectedFilesFromLocalStorage() {
+            localStorage.removeItem('selectedFiles');
+        }
+        function deleteSelected() {
+            // Get the list of selected files
+            const selectedFiles = Array.from(document.querySelectorAll('input[name="selected_files[]"]:checked')).map(input => input.value);
+            // Ask the user if they want to delete the selected files
+            if (selectedFiles.length > 0 && confirm('Do you want to delete the selected files?')) {
+                // Trigger the deletion of selected files
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = '{{ url_for("delete_selected_files") }}';
+                selectedFiles.forEach(file => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'selected_files[]';
+                    input.value = file;
+                    form.appendChild(input);
+                });
+                document.body.appendChild(form);
+                form.submit();
             }
         }
         function updateLastDownloadTime() {
-            // Get the current date and time
             var currentDate = new Date();
             var lastDownloadTime = currentDate.toISOString();
-
-            // Store the last download time in localStorage
             localStorage.setItem('lastDownloadTime', lastDownloadTime);
+        }
+        function downloadAll() {
+            // Get the selected files
+            var selectedFiles = document.querySelectorAll('input[name="selected_files[]"]:checked');
+            // Check if any files are selected
+            if (selectedFiles.length === 0) {
+                alert('No files selected for download.');
+                return;
+            }
+            // Use FormData to send selected files in the request
+            var formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('selected_files[]', file.value);
+            });
+            fetch('/download-selected-files', {
+                    method: 'POST',
+                    body: formData,
+                })
+                .then(response => response.blob())
+                .then(blob => {
+                    var link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'selected_files.zip';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    // Update lastDownloadedFiles in localStorage
+                    const newDownloadedFiles = Array.from(selectedFiles).map(file => file.value);
+                    const lastDownloadedFiles = localStorage.getItem('lastDownloadedFiles') ? JSON.parse(localStorage.getItem('lastDownloadedFiles')) : [];
+                    const updatedDownloadedFiles = [...lastDownloadedFiles, ...newDownloadedFiles];
+                    localStorage.setItem('lastDownloadedFiles', JSON.stringify(updatedDownloadedFiles));
+                    // Clear selectedFiles from localStorage after successful download
+                    clearSelectedFilesFromLocalStorage();
+                })
+                .catch(error => {
+                    console.error('Failed to download files:', error);
+                });
         }
     </script>
 </body>
-
 </html>
