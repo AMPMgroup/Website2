@@ -1,4 +1,4 @@
-# Website2 
+# Website2 - seq/pdb
 Sequence Input Server
 
 # Requirements :
