@@ -19,7 +19,7 @@
         <ul>
             {% for file, upload_time, downloaded_time in user_files_info %}
                 <li {% if not downloaded_time %}class="highlight"{% endif %}>
-                    <input type="checkbox" name="selected_files[]" value="{{ file }}">
+                    <input type="checkbox" name="selected_files[]" value="{{ file }}" {% if not downloaded_time %}checked{% endif %}>
                     {{ file }} 
                     Uploaded on: {{ to_datetime(upload_time) }} 
                     {% if downloaded_time %}
