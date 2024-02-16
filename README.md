@@ -42,7 +42,7 @@ flask run
     db_config: dict = {
     'host': 'localhost',
     'user': 'root',
-    'password': 'divya',
+    'password': '',
     'database': 'mydb'
 }
 ### other files related to database: 
